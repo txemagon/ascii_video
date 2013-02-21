@@ -3,11 +3,18 @@
 #include <ncurses.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
 
 #define MAXSTR        0x100
 #define current_frame (i+1)
 #define BASEFILENAME  "./%s/%s%04i.jpg.txt"  /* directory/base_name#number.jpg.txt */
 
+sig_atomic_t keep_on = true;
+
+void exit_handler(int signal_number){
+  keep_on = false;
+}
 
 char images_directory[MAXSTR];
 char image_prefix[MAXSTR];
@@ -22,6 +29,11 @@ void load_frame(int frame_number, char **video){
   FILE *pf = NULL;
   long filesize;
   int bytes_read;
+  struct sigaction sa;
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = &exit_handler;
+  sigaction(SIGINT, &sa, NULL);
 
   sprintf(filename, BASEFILENAME, images_directory, image_prefix, frame_number);
   #ifndef NDEBUG
@@ -83,7 +95,7 @@ int main(int argc, char *argv[]){
   printf("Loading time %.2lf seconds.\n", (double) (end_time - start_time) / CLOCKS_PER_SEC);
   initscr();
   curs_set(0);
-  for (int frame=0; frame<final_frame; frame++){
+  for (int frame=0; frame<final_frame && keep_on; frame++){
     mvprintw(0, 0, "Frame %i\n%s", frame, video[frame]);
     refresh();
   }
